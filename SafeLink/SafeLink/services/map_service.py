@@ -21,6 +21,7 @@ from repositories.disaster_history_repository import (
     get_disaster_history_repository,
 )
 from repositories.region_repository import RegionRepository, get_region_repository
+from repositories.shelter_repository import ShelterRepository, get_shelter_repository
 from services.advisory import (
     AdviceGenerator,
     FallbackAdviceGenerator,
@@ -47,6 +48,7 @@ class MapService:
         fallback_weather_client: WeatherClient | None = None,
         terrain_service: TerrainService | None = None,
         history_repository: DisasterHistoryRepository | None = None,
+        shelter_repository: ShelterRepository | None = None,
     ) -> None:
         self.repository = repository
         self.risk_predictor = risk_predictor
@@ -55,6 +57,7 @@ class MapService:
         self.fallback_weather_client = fallback_weather_client or SampleWeatherClient()
         self.terrain_service = terrain_service
         self.history_repository = history_repository
+        self.shelter_repository = shelter_repository
 
     def _enrich_region(self, source: dict) -> tuple[dict, dict]:
         region = dict(source)
@@ -78,6 +81,8 @@ class MapService:
             region["disaster_history"] = self.history_repository.find_by_region(
                 region["name"]
             )
+        if self.shelter_repository is not None:
+            region["shelters"] = self.shelter_repository.retrieve(region["name"])
         return region, metadata
 
     def _analyze_region(
@@ -193,6 +198,19 @@ class MapService:
                 "weather_error": weather_error,
                 "llm_error": advice.error,
                 "risk_source": risk.source,
+                "risk_formula": (
+                    "overall = landslide_risk*0.5 + heavy_rain_risk*0.3 "
+                    "+ cascade_risk*0.2"
+                ),
+                "cascade_formula": "sqrt(landslide_risk * heavy_rain_risk)",
+                "landslide_classification_threshold": 0.5,
+                "heavy_rain_reference_mm": {
+                    "rain_15m": 20,
+                    "rain_60m": 50,
+                    "rain_3h": 90,
+                    "rain_6h": 150,
+                    "rain_24h": 300,
+                },
                 "rain_24h_method": "기상청 rn_day(KST 자정 이후 누적)를 MVP의 rain_24h로 사용",
                 "terrain_source": region.get("terrain_source", "fallback"),
                 "history_source": (
@@ -202,6 +220,13 @@ class MapService:
                 ),
                 "history_scope": "상세주소_시도 + 상세주소_시군구 정확히 일치",
                 "history_record_count": len(region.get("disaster_history", [])),
+                "shelter_rag_source": (
+                    str(self.shelter_repository.csv_path)
+                    if self.shelter_repository and self.shelter_repository.csv_path
+                    else "fallback"
+                ),
+                "shelter_rag_retrieval": "지역 구 이름이 대피소 주소에 일치하는 상위 CSV 행",
+                "shelter_result_count": len(region.get("shelters", [])),
                 "mvp_scope": settings.mvp_region_prefix,
                 "notice": "Random Forest 모델 연결 전 위험도는 개발용 규칙 기반 결과입니다.",
                 **terrain_metadata,
@@ -246,4 +271,5 @@ def get_map_service() -> MapService:
             settings.landslide_risk_raster_path, settings.dem_raster_path
         ),
         history_repository=get_disaster_history_repository(),
+        shelter_repository=get_shelter_repository(),
     )

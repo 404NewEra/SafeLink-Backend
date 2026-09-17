@@ -33,7 +33,7 @@ def get_region_detail(
         Path(
             min_length=1,
             max_length=100,
-            description="지도 feature의 ID 또는 검색할 지역명 (예: seoul-gwanak, 관악구)",
+            description="5자리 시군구 코드 또는 검색할 지역명 (예: 11620, 관악구)",
         ),
     ],
     service: Annotated[MapService, Depends(get_map_service)],

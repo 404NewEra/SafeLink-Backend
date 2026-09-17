@@ -1,8 +1,8 @@
 [
   {
-    "id": "seoul-gwanak",
+    "id": "11620",
     "name": "서울특별시 관악구",
-    "aliases": ["서울 관악구", "관악구", "관악"],
+    "aliases": ["서울 관악구", "관악구", "관악", "seoul-gwanak"],
     "center": [126.9516, 37.4784],
     "geometry": {
       "type": "Polygon",
@@ -15,11 +15,7 @@
     "landslide_map_value": 2,
     "terrain_source": "sample",
     "disaster_history": [],
-    "cascading_disasters": [
-      {"type": "산사태 후 도로 통제", "possibility": "높음", "description": "급경사지 토사 유출로 인한 도로 차단 가능성이 있습니다."}
-    ],
-    "shelters": [
-      {"id": "shelter-gwanak-01", "name": "관악구민종합체육센터", "address": "서울특별시 관악구 낙성대로3길 37", "latitude": 37.4731, "longitude": 126.9603, "capacity": 520, "phone": "02-000-0000"}
-    ]
+    "cascading_disasters": [],
+    "shelters": []
   }
 ]

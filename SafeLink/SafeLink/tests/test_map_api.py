@@ -36,6 +36,7 @@ def test_map_returns_geojson_for_maplibre() -> None:
     assert body["geojson"]["type"] == "FeatureCollection"
     assert body["geojson"]["features"]
     assert body["geojson"]["features"][0]["properties"]["risk_color"].startswith("#")
+    assert body["geojson"]["features"][0]["id"] == "11620"
     assert len(body["geojson"]["features"]) == 1
     assert body["geojson"]["features"][0]["properties"]["name"].startswith("서울")
     assert len(body["geojson"]["features"][0]["properties"]["observations"]) == 7
@@ -43,11 +44,11 @@ def test_map_returns_geojson_for_maplibre() -> None:
 
 
 def test_region_can_be_selected_by_id() -> None:
-    response = client.get("/map/seoul-gwanak")
+    response = client.get("/map/11620")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["region"]["id"] == "seoul-gwanak"
+    assert body["region"]["id"] == "11620"
     model_input = body["risk"]["model_input"]
     assert list(model_input) == [
         "landslide_map_value",
@@ -65,16 +66,23 @@ def test_region_can_be_selected_by_id() -> None:
     assert body["weather_summary"]["observation_count"] == 7
     assert len(body["observations"]) == 7
     assert isinstance(body["disaster_history"], list)
-    assert body["cascading_disasters"]
+    assert isinstance(body["cascading_disasters"], list)
     assert body["action_recommendation"]
-    assert body["shelters"]
+    assert isinstance(body["shelters"], list)
 
 
 def test_region_can_be_searched_by_name() -> None:
     response = client.get("/map/관악")
 
     assert response.status_code == 200
-    assert response.json()["region"]["id"] == "seoul-gwanak"
+    assert response.json()["region"]["id"] == "11620"
+
+
+def test_full_name_and_legacy_id_are_normalized_to_official_code() -> None:
+    for value in ("서울특별시 관악구", "서울 관악구", "seoul-gwanak"):
+        response = client.get(f"/map/{value}")
+        assert response.status_code == 200
+        assert response.json()["region"]["id"] == "11620"
 
 
 def test_non_seoul_region_is_not_exposed() -> None:

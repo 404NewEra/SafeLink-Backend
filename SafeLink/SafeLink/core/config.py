@@ -48,6 +48,12 @@ class Settings:
     dem_raster_path: str = field(
         default_factory=lambda: os.getenv("DEM_RASTER_PATH", "")
     )
+    shelter_csv_path: str = field(
+        default_factory=lambda: os.getenv("SHELTER_CSV_PATH", "")
+    )
+    shelter_rag_top_k: int = field(
+        default_factory=lambda: int(os.getenv("SHELTER_RAG_TOP_K", "5"))
+    )
     mvp_region_prefix: str = field(
         default_factory=lambda: os.getenv("MVP_REGION_PREFIX", "서울특별시")
     )

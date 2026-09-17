@@ -1,6 +1,6 @@
 import json
 
-from models.schemas import RandomForestInput, RiskAnalysis, WeatherRiskPoint
+from models.schemas import RandomForestInput, RiskAnalysis, RiskWeights, WeatherRiskPoint
 from services.advisory import (
     FallbackAdviceGenerator,
     LangChainAdviceGenerator,
@@ -11,6 +11,12 @@ from services.advisory import (
 def _risk() -> RiskAnalysis:
     return RiskAnalysis(
         overall_score=78,
+        landslide_probability=0.82,
+        landslide_predicted=True,
+        landslide_risk_score=82,
+        heavy_rain_risk_score=76,
+        cascade_risk_score=78.94,
+        weights=RiskWeights(landslide=0.5, heavy_rain=0.3, cascade=0.2),
         level="critical",
         label="매우 높음",
         color="#E74C3C",
@@ -95,7 +101,8 @@ def test_langchain_generator_receives_risk_history_and_verified_shelters() -> No
     assert chain.context["risk"]["model_input"]["rain_60m"] == 42
     assert chain.context["risk"]["model_input"]["slope"] == 31.2
     assert chain.context["past_disaster_history"][0]["type"] == "산사태"
-    assert chain.context["verified_shelters"][0]["name"] == "시민체육센터"
+    assert chain.context["retrieved_shelters_from_seoul_csv"][0]["name"] == "시민체육센터"
+    assert any("홍수" in item["type"] for item in result.cascading_disasters)
 
 
 def test_llm_failure_falls_back_without_losing_shelter_guidance() -> None:
@@ -109,3 +116,4 @@ def test_llm_failure_falls_back_without_losing_shelter_guidance() -> None:
     assert result.generated_by == "fallback"
     assert result.error is not None
     assert "시민체육센터" in result.action_recommendation
+    assert any("홍수" in item["type"] for item in result.cascading_disasters)

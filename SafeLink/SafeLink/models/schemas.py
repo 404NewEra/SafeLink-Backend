@@ -14,8 +14,22 @@ class RandomForestInput(BaseModel):
     elevation: float
 
 
+class RiskWeights(BaseModel):
+    landslide: float = Field(ge=0, le=1)
+    heavy_rain: float = Field(ge=0, le=1)
+    cascade: float = Field(ge=0, le=1)
+
+
 class RiskAnalysis(BaseModel):
     overall_score: float = Field(ge=0, le=100, description="종합 위험도 점수")
+    landslide_probability: float = Field(
+        ge=0, le=1, description="분류 모델의 산사태 발생 확률"
+    )
+    landslide_predicted: bool = Field(description="발생 확률 0.5 이상 여부")
+    landslide_risk_score: float = Field(ge=0, le=100)
+    heavy_rain_risk_score: float = Field(ge=0, le=100)
+    cascade_risk_score: float = Field(ge=0, le=100)
+    weights: RiskWeights
     level: Literal["low", "moderate", "high", "critical"]
     label: str
     color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
@@ -88,10 +102,12 @@ class Shelter(BaseModel):
     id: str
     name: str
     address: str
-    latitude: float
-    longitude: float
+    latitude: float | None = None
+    longitude: float | None = None
     capacity: int | None = Field(default=None, ge=0)
     phone: str | None = None
+    emergency_facilities: str | None = None
+    note: str | None = None
 
 
 class RegionInfo(BaseModel):
