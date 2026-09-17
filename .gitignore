@@ -27,7 +27,6 @@ dist/
 # Environment and model artifacts
 .env
 .env.*
-!.env.example
 models/*.joblib
 models/*.pkl
 models/*.pickle

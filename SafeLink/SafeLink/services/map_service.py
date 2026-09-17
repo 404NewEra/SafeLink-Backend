@@ -25,10 +25,10 @@ from repositories.shelter_repository import ShelterRepository, get_shelter_repos
 from services.advisory import (
     AdviceGenerator,
     FallbackAdviceGenerator,
-    LangChainAdviceGenerator,
+    GeminiAdviceGenerator,
     ResilientAdviceGenerator,
 )
-from services.risk_model import FallbackRiskPredictor, RISK_STYLE, RiskPredictor
+from services.risk_model import RISK_STYLE, RandomForestRiskPredictor, RiskPredictor
 from services.terrain_service import TerrainDataError, TerrainService
 from services.weather_client import (
     KmaWeatherClient,
@@ -228,7 +228,11 @@ class MapService:
                 "shelter_rag_retrieval": "지역 구 이름이 대피소 주소에 일치하는 상위 CSV 행",
                 "shelter_result_count": len(region.get("shelters", [])),
                 "mvp_scope": settings.mvp_region_prefix,
-                "notice": "Random Forest 모델 연결 전 위험도는 개발용 규칙 기반 결과입니다.",
+                "notice": (
+                    "제공된 Random Forest Pipeline의 발생 클래스 확률을 사용했습니다."
+                    if risk.source == "random_forest"
+                    else "Random Forest를 사용할 수 없어 규칙 기반 결과를 사용했습니다."
+                ),
                 **terrain_metadata,
             },
         )
@@ -236,8 +240,6 @@ class MapService:
 
 @lru_cache
 def get_map_service() -> MapService:
-    # TODO: 모델 파일이 준비되면 FallbackRiskPredictor를 아래 구현으로 교체하세요.
-    # risk_predictor = RandomForestRiskPredictor(settings.random_forest_model_path)
     weather_client: WeatherClient
     if settings.kma_auth_key:
         weather_client = KmaWeatherClient(
@@ -250,20 +252,19 @@ def get_map_service() -> MapService:
 
     fallback_advice = FallbackAdviceGenerator()
     advice_generator: AdviceGenerator = fallback_advice
-    if settings.llm_api_key and settings.llm_model:
+    if settings.gemini_api_key:
         advice_generator = ResilientAdviceGenerator(
-            primary=LangChainAdviceGenerator(
-                api_key=settings.llm_api_key,
-                model_name=settings.llm_model,
-                base_url=settings.llm_base_url,
-                timeout_seconds=settings.llm_timeout_seconds,
+            primary=GeminiAdviceGenerator(
+                api_key=settings.gemini_api_key,
+                model_name=settings.gemini_model,
+                timeout_seconds=settings.gemini_timeout_seconds,
             ),
             fallback=fallback_advice,
         )
 
     return MapService(
         repository=get_region_repository(),
-        risk_predictor=FallbackRiskPredictor(),
+        risk_predictor=RandomForestRiskPredictor(settings.random_forest_model_path),
         advice_generator=advice_generator,
         weather_client=weather_client,
         fallback_weather_client=SampleWeatherClient(),

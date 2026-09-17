@@ -3,7 +3,7 @@ import json
 from models.schemas import RandomForestInput, RiskAnalysis, RiskWeights, WeatherRiskPoint
 from services.advisory import (
     FallbackAdviceGenerator,
-    LangChainAdviceGenerator,
+    GeminiAdviceGenerator,
     ResilientAdviceGenerator,
 )
 
@@ -89,9 +89,15 @@ class FakeChain:
         }
 
 
+def test_gemini_structured_chain_can_be_constructed_without_api_call() -> None:
+    generator = GeminiAdviceGenerator("test-key")
+
+    assert generator.chain is not None
+
+
 def test_langchain_generator_receives_risk_history_and_verified_shelters() -> None:
     chain = FakeChain()
-    generator = LangChainAdviceGenerator("", "", chain=chain)
+    generator = GeminiAdviceGenerator("", chain=chain)
 
     result = generator.generate(_region(), _risk(), _observations())
 
@@ -107,7 +113,7 @@ def test_langchain_generator_receives_risk_history_and_verified_shelters() -> No
 
 def test_llm_failure_falls_back_without_losing_shelter_guidance() -> None:
     generator = ResilientAdviceGenerator(
-        primary=LangChainAdviceGenerator("", "", chain=FakeChain(should_fail=True)),
+        primary=GeminiAdviceGenerator("", chain=FakeChain(should_fail=True)),
         fallback=FallbackAdviceGenerator(),
     )
 

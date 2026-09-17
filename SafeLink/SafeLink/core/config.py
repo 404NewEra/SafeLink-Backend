@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
+DESKTOP_ROOT = Path.home() / "Desktop"
 
 
 def _cors_origins() -> list[str]:
@@ -17,7 +18,10 @@ def _cors_origins() -> list[str]:
 class Settings:
     cors_origins: list[str] = field(default_factory=_cors_origins)
     random_forest_model_path: str = field(
-        default_factory=lambda: os.getenv("RANDOM_FOREST_MODEL_PATH", "")
+        default_factory=lambda: os.getenv(
+            "RANDOM_FOREST_MODEL_PATH",
+            str(DESKTOP_ROOT / "landslide_pipeline.joblib"),
+        )
     )
     kma_auth_key: str = field(
         default_factory=lambda: os.getenv(
@@ -33,23 +37,36 @@ class Settings:
     kma_api_timeout_seconds: float = field(
         default_factory=lambda: float(os.getenv("KMA_API_TIMEOUT_SECONDS", "10"))
     )
-    llm_api_key: str = field(default_factory=lambda: os.getenv("LLM_API_KEY", ""))
-    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", ""))
-    llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
-    llm_timeout_seconds: float = field(
-        default_factory=lambda: float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+    gemini_api_key: str = field(
+        default_factory=lambda: os.getenv("GEMINI_API_KEY", "")
+    )
+    gemini_model: str = field(
+        default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    )
+    gemini_timeout_seconds: float = field(
+        default_factory=lambda: float(os.getenv("GEMINI_TIMEOUT_SECONDS", "30"))
     )
     landslide_history_csv_path: str = field(
-        default_factory=lambda: os.getenv("LANDSLIDE_HISTORY_CSV_PATH", "")
+        default_factory=lambda: os.getenv(
+            "LANDSLIDE_HISTORY_CSV_PATH",
+            str(DESKTOP_ROOT / "산림청_최근 5년간 전국 산사태 발생 이력_20250101.csv"),
+        )
     )
     landslide_risk_raster_path: str = field(
-        default_factory=lambda: os.getenv("LANDSLIDE_RISK_RASTER_PATH", "")
+        default_factory=lambda: os.getenv(
+            "LANDSLIDE_RISK_RASTER_PATH", str(DESKTOP_ROOT / "41" / "41.tif")
+        )
     )
     dem_raster_path: str = field(
-        default_factory=lambda: os.getenv("DEM_RASTER_PATH", "")
+        default_factory=lambda: os.getenv(
+            "DEM_RASTER_PATH", str(DESKTOP_ROOT / "한반도" / "한반도90m_GRS80.img")
+        )
     )
     shelter_csv_path: str = field(
-        default_factory=lambda: os.getenv("SHELTER_CSV_PATH", "")
+        default_factory=lambda: os.getenv(
+            "SHELTER_CSV_PATH",
+            str(DESKTOP_ROOT / "서울특별시_산사태 임시대피소 현황_20230614.csv"),
+        )
     )
     shelter_rag_top_k: int = field(
         default_factory=lambda: int(os.getenv("SHELTER_RAG_TOP_K", "5"))

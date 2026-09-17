@@ -105,14 +105,13 @@ class FallbackAdviceGenerator:
         )
 
 
-class LangChainAdviceGenerator:
-    """LangChain을 통해 OpenAI 호환 LLM에서 구조화된 상세 분석을 생성합니다."""
+class GeminiAdviceGenerator:
+    """LangChain과 Gemini에서 구조화된 상세 분석을 생성합니다."""
 
     def __init__(
         self,
         api_key: str,
-        model_name: str,
-        base_url: str = "",
+        model_name: str = "gemini-2.5-flash",
         timeout_seconds: float = 30,
         chain: Any | None = None,
     ) -> None:
@@ -120,22 +119,21 @@ class LangChainAdviceGenerator:
             self.chain = chain
             return
         if not api_key or not model_name:
-            raise ValueError("LLM_API_KEY와 LLM_MODEL이 모두 필요합니다.")
+            raise ValueError("GEMINI_API_KEY와 Gemini 모델명이 필요합니다.")
 
         from langchain_core.prompts import ChatPromptTemplate
-        from langchain_openai import ChatOpenAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        llm_options: dict[str, Any] = {
-            "api_key": api_key,
-            "model": model_name,
-            "temperature": 0,
-            "timeout": timeout_seconds,
-        }
-        if base_url:
-            llm_options["base_url"] = base_url
-
-        llm = ChatOpenAI(**llm_options)
-        structured_llm = llm.with_structured_output(LlmAdviceOutput)
+        llm = ChatGoogleGenerativeAI(
+            model=model_name,
+            api_key=api_key,
+            temperature=0,
+            timeout=timeout_seconds,
+            max_retries=2,
+        )
+        structured_llm = llm.with_structured_output(
+            LlmAdviceOutput, method="json_schema"
+        )
         prompt = ChatPromptTemplate.from_messages(
             [
                 (

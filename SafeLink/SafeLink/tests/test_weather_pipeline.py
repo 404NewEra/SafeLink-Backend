@@ -78,15 +78,19 @@ def test_exact_kma_rainfall_fields_are_used_as_random_forest_input(monkeypatch) 
 
 class FakeRandomForest:
     classes_ = [0, 1]
+    feature_names_in_ = [
+        "landslide_map_value", "rain_15m", "rain_60m", "rain_3h",
+        "rain_6h", "rain_24h", "slope", "elevation",
+    ]
 
     def predict_proba(self, vector):
-        assert len(vector[0]) == 8
+        assert vector.shape == (1, 8)
+        assert list(vector.columns) == self.feature_names_in_
         return [[0.27, 0.73]]
 
 
 def test_random_forest_positive_probability_becomes_landslide_risk() -> None:
-    predictor = RandomForestRiskPredictor("unused.joblib")
-    predictor.model = FakeRandomForest()
+    predictor = RandomForestRiskPredictor("unused.joblib", model=FakeRandomForest())
     observation = WeatherObservation(
         observed_at=datetime(2026, 9, 17, 14, 0, tzinfo=KST),
         temperature_c=23,

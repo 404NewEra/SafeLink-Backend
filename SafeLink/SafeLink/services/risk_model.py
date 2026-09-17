@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
 from models.schemas import RandomForestInput, RiskAnalysis, RiskWeights
@@ -15,6 +16,16 @@ LANDSLIDE_WEIGHT = 0.5
 HEAVY_RAIN_WEIGHT = 0.3
 CASCADE_WEIGHT = 0.2
 CLASSIFICATION_THRESHOLD = 0.5
+MODEL_FEATURE_NAMES = [
+    "landslide_map_value",
+    "rain_15m",
+    "rain_60m",
+    "rain_3h",
+    "rain_6h",
+    "rain_24h",
+    "slope",
+    "elevation",
+]
 
 
 class RiskPredictor(Protocol):
@@ -49,6 +60,9 @@ class ModelFeatures:
             self.slope,
             self.elevation,
         ]
+
+    def as_record(self) -> dict[str, float]:
+        return dict(zip(MODEL_FEATURE_NAMES, self.as_vector()))
 
     def to_schema(self) -> RandomForestInput:
         return RandomForestInput(**self.__dict__)
@@ -162,31 +176,47 @@ class FallbackRiskPredictor:
 
 
 class RandomForestRiskPredictor:
-    """학습된 Random Forest 모델을 연결할 예측기입니다."""
+    """저장된 분류 Pipeline의 발생 클래스 확률을 산사태 위험도로 사용합니다."""
 
     def __init__(
-        self, model_path: str, preprocessor: WeatherPreprocessor | None = None
+        self,
+        model_path: str,
+        preprocessor: WeatherPreprocessor | None = None,
+        model: Any | None = None,
     ) -> None:
         self.model_path = model_path
         self.preprocessor = preprocessor or WeatherPreprocessor()
-        self.model = None
-        # Random Forest 파일을 추가한 뒤 아래 주석을 해제하세요.
-        # import joblib
-        # self.model = joblib.load(model_path)
+        if model is None:
+            path = Path(model_path)
+            if not path.is_file():
+                raise FileNotFoundError(f"Random Forest 모델 파일이 없습니다: {path}")
+            import joblib
+
+            model = joblib.load(path)
+        self.model = model
+        actual_names = [str(value) for value in getattr(self.model, "feature_names_in_", [])]
+        if actual_names != MODEL_FEATURE_NAMES:
+            raise ValueError(
+                "Random Forest 입력 스키마 불일치: "
+                f"expected={MODEL_FEATURE_NAMES}, actual={actual_names}"
+            )
+        if list(getattr(self.model, "classes_", [])) != [0, 1]:
+            raise ValueError(
+                f"Random Forest 클래스가 [0, 1]이 아닙니다: {self.model.classes_}"
+            )
 
     def predict(
         self,
         region: dict[str, Any],
         weather: WeatherObservation,
     ) -> RiskAnalysis:
-        if self.model is None:
-            raise RuntimeError("Random Forest 모델 파일 연결이 아직 활성화되지 않았습니다.")
-
         features = self.preprocessor.transform(region, weather)
         # 입력 순서:
         # landslide_map_value, rain_15m, rain_60m, rain_3h,
         # rain_6h, rain_24h, slope, elevation
-        vector = [features.as_vector()]
+        import pandas as pd
+
+        model_input = pd.DataFrame([features.as_record()], columns=MODEL_FEATURE_NAMES)
         classes = list(getattr(self.model, "classes_", []))
         positive_index = next(
             (
@@ -198,5 +228,5 @@ class RandomForestRiskPredictor:
         )
         if positive_index is None:
             raise RuntimeError("Random Forest classes_에서 산사태 발생 클래스 1을 찾지 못했습니다.")
-        probability = float(self.model.predict_proba(vector)[0][positive_index])
+        probability = float(self.model.predict_proba(model_input)[0][positive_index])
         return _build_analysis(features, probability, "random_forest")
