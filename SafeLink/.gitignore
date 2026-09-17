@@ -1,0 +1,7 @@
+# Project-local virtual environment
+.venv/
+
+# Files left by the previously broken root-level virtual environment
+Lib/
+Scripts/
+pyvenv.cfg

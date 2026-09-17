@@ -1,0 +1,71 @@
+[
+  {
+    "id": "seoul-gwanak",
+    "name": "서울특별시 관악구",
+    "aliases": ["서울 관악구", "관악구", "관악"],
+    "center": [126.9516, 37.4784],
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[126.900, 37.495], [126.985, 37.495], [126.985, 37.445], [126.900, 37.445], [126.900, 37.495]]]
+    },
+    "sample_risk_score": 67.0,
+    "rainfall_mm": 142.5,
+    "slope_degree": 24.7,
+    "landslide_grade": 2,
+    "disaster_history": [
+      {"date": "2022-08", "type": "집중호우", "description": "집중호우로 일부 저지대 침수 피해가 발생했습니다."}
+    ],
+    "cascading_disasters": [
+      {"type": "산사태 후 도로 통제", "possibility": "높음", "description": "급경사지 토사 유출로 인한 도로 차단 가능성이 있습니다."}
+    ],
+    "shelters": [
+      {"id": "shelter-gwanak-01", "name": "관악구민종합체육센터", "address": "서울특별시 관악구 낙성대로3길 37", "latitude": 37.4731, "longitude": 126.9603, "capacity": 520, "phone": "02-000-0000"}
+    ]
+  },
+  {
+    "id": "gangwon-chuncheon",
+    "name": "강원특별자치도 춘천시",
+    "aliases": ["강원 춘천시", "춘천시", "춘천"],
+    "center": [127.7298, 37.8813],
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[127.620, 37.950], [127.850, 37.950], [127.850, 37.790], [127.620, 37.790], [127.620, 37.950]]]
+    },
+    "sample_risk_score": 82.0,
+    "rainfall_mm": 218.3,
+    "slope_degree": 31.2,
+    "landslide_grade": 1,
+    "disaster_history": [
+      {"date": "2020-08", "type": "산사태", "description": "장기간 강우로 산지 인접 지역에 토사 유출이 발생했습니다."}
+    ],
+    "cascading_disasters": [
+      {"type": "산사태 후 하천 범람", "possibility": "매우 높음", "description": "토사가 배수로와 지류를 막아 범람 위험을 높일 수 있습니다."}
+    ],
+    "shelters": [
+      {"id": "shelter-chuncheon-01", "name": "춘천시민체육센터", "address": "강원특별자치도 춘천시 우석로 102", "latitude": 37.8675, "longitude": 127.7440, "capacity": 800, "phone": "033-000-0000"}
+    ]
+  },
+  {
+    "id": "busan-haeundae",
+    "name": "부산광역시 해운대구",
+    "aliases": ["부산 해운대구", "해운대구", "해운대"],
+    "center": [129.1635, 35.1631],
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[129.105, 35.205], [129.225, 35.205], [129.225, 35.125], [129.105, 35.125], [129.105, 35.205]]]
+    },
+    "sample_risk_score": 43.0,
+    "rainfall_mm": 88.4,
+    "slope_degree": 16.5,
+    "landslide_grade": 3,
+    "disaster_history": [
+      {"date": "2022-09", "type": "태풍", "description": "태풍 내습으로 해안가 월파와 시설물 피해가 발생했습니다."}
+    ],
+    "cascading_disasters": [
+      {"type": "강풍 후 정전", "possibility": "보통", "description": "시설물 파손으로 일부 지역에 정전이 발생할 수 있습니다."}
+    ],
+    "shelters": [
+      {"id": "shelter-haeundae-01", "name": "해운대구 문화복합센터", "address": "부산광역시 해운대구 센텀중앙로 170", "latitude": 35.1820, "longitude": 129.1218, "capacity": 650, "phone": "051-000-0000"}
+    ]
+  }
+]
