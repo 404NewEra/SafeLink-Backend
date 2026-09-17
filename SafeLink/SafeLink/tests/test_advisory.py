@@ -95,6 +95,15 @@ def test_gemini_structured_chain_can_be_constructed_without_api_call() -> None:
     assert generator.chain is not None
 
 
+def test_fallback_can_report_optional_gemini_initialization_error() -> None:
+    result = FallbackAdviceGenerator("Gemini dependency missing").generate(
+        _region(), _risk(), _observations()
+    )
+
+    assert result.generated_by == "fallback"
+    assert result.error == "Gemini dependency missing"
+
+
 def test_langchain_generator_receives_risk_history_and_verified_shelters() -> None:
     chain = FakeChain()
     generator = GeminiAdviceGenerator("", chain=chain)

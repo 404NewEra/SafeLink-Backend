@@ -253,14 +253,20 @@ def get_map_service() -> MapService:
     fallback_advice = FallbackAdviceGenerator()
     advice_generator: AdviceGenerator = fallback_advice
     if settings.gemini_api_key:
-        advice_generator = ResilientAdviceGenerator(
-            primary=GeminiAdviceGenerator(
-                api_key=settings.gemini_api_key,
-                model_name=settings.gemini_model,
-                timeout_seconds=settings.gemini_timeout_seconds,
-            ),
-            fallback=fallback_advice,
-        )
+        try:
+            advice_generator = ResilientAdviceGenerator(
+                primary=GeminiAdviceGenerator(
+                    api_key=settings.gemini_api_key,
+                    model_name=settings.gemini_model,
+                    timeout_seconds=settings.gemini_timeout_seconds,
+                ),
+                fallback=fallback_advice,
+            )
+        except Exception as error:
+            # 선택 기능인 Gemini 초기화 실패가 지도 API 전체의 500 오류가 되지 않게 합니다.
+            advice_generator = FallbackAdviceGenerator(
+                initial_error=f"Gemini 초기화 실패: {error}"
+            )
 
     return MapService(
         repository=get_region_repository(),

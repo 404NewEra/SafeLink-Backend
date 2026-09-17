@@ -74,6 +74,9 @@ def _append_flood_if_needed(
 
 
 class FallbackAdviceGenerator:
+    def __init__(self, initial_error: str | None = None) -> None:
+        self.initial_error = initial_error
+
     def generate(
         self,
         region: dict[str, Any],
@@ -102,6 +105,7 @@ class FallbackAdviceGenerator:
             ),
             action_recommendation=recommendation,
             generated_by="fallback",
+            error=self.initial_error,
         )
 
 
