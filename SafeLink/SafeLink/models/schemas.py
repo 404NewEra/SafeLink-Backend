@@ -36,7 +36,7 @@ class RiskAnalysis(BaseModel):
     label: str
     color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
     model_input: RandomForestInput
-    source: Literal["fallback", "random_forest"]
+    source: Literal["fallback", "random_forest", "demo_override"]
 
 
 class WeatherRiskPoint(BaseModel):

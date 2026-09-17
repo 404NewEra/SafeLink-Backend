@@ -48,6 +48,12 @@ def test_map_returns_geojson_for_maplibre() -> None:
         and feature["properties"]["name"].endswith("구")
         for feature in body["geojson"]["features"]
     )
+    dobong = next(
+        feature for feature in body["geojson"]["features"] if feature["id"] == "11320"
+    )
+    assert dobong["properties"]["risk_score"] == 70
+    assert dobong["properties"]["risk_level"] == "danger"
+    assert dobong["properties"]["risk_label"] == "위험"
     assert len(body["geojson"]["features"][0]["properties"]["observations"]) == 7
     assert body["weather_source"] == "sample"
 
@@ -80,6 +86,24 @@ def test_region_can_be_selected_by_id() -> None:
     assert isinstance(body["cascading_disasters"], list)
     assert body["action_recommendation"]
     assert isinstance(body["shelters"], list)
+
+
+def test_dobong_has_mvp_demo_risk_override() -> None:
+    response = client.get("/map/11320")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["region"]["name"] == "서울특별시 도봉구"
+    assert body["risk"]["landslide_probability"] == 0.7
+    assert body["risk"]["landslide_risk_score"] == 70
+    assert body["risk"]["heavy_rain_risk_score"] == 70
+    assert body["risk"]["cascade_risk_score"] == 70
+    assert body["risk"]["overall_score"] == 70
+    assert body["risk"]["level"] == "danger"
+    assert body["risk"]["label"] == "위험"
+    assert body["risk"]["source"] == "demo_override"
+    assert body["metadata"]["demo_override_applied"] is True
+    assert body["metadata"]["shelter_rag_eligible"] is True
 
 
 def test_region_can_be_searched_by_name() -> None:

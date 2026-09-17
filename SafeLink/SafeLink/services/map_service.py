@@ -38,6 +38,13 @@ from services.weather_client import (
 )
 
 SHELTER_RAG_MIN_OVERALL_SCORE = 60.0
+DEMO_RISK_OVERRIDES = {
+    # MVP 시연용: 다른 구의 실제 분석 결과에는 영향을 주지 않습니다.
+    "11320": {
+        "landslide_risk_score": 70.0,
+        "heavy_rain_risk_score": 70.0,
+    }
+}
 
 
 class MapService:
@@ -60,6 +67,37 @@ class MapService:
         self.terrain_service = terrain_service
         self.history_repository = history_repository
         self.shelter_repository = shelter_repository
+
+    @staticmethod
+    def _apply_demo_risk_override(region: dict, risk):
+        override = DEMO_RISK_OVERRIDES.get(region["id"])
+        if override is None:
+            return risk
+
+        landslide_score = override["landslide_risk_score"]
+        heavy_rain_score = override["heavy_rain_risk_score"]
+        cascade_score = round((landslide_score * heavy_rain_score) ** 0.5, 2)
+        overall_score = round(
+            landslide_score * 0.5
+            + heavy_rain_score * 0.3
+            + cascade_score * 0.2,
+            2,
+        )
+        label, color = RISK_STYLE["danger"]
+        return risk.model_copy(
+            update={
+                "overall_score": overall_score,
+                "landslide_probability": landslide_score / 100.0,
+                "landslide_predicted": True,
+                "landslide_risk_score": landslide_score,
+                "heavy_rain_risk_score": heavy_rain_score,
+                "cascade_risk_score": cascade_score,
+                "level": "danger",
+                "label": label,
+                "color": color,
+                "source": "demo_override",
+            }
+        )
 
     def _enrich_region(self, source: dict) -> tuple[dict, dict]:
         region = dict(source)
@@ -101,7 +139,9 @@ class MapService:
                 temperature_c=observation.temperature_c,
                 dew_point_c=observation.dew_point_c,
                 humidity_percent=observation.humidity_percent,
-                risk=self.risk_predictor.predict(region, observation),
+                risk=self._apply_demo_risk_override(
+                    region, self.risk_predictor.predict(region, observation)
+                ),
             )
             for observation in observations
         ]
@@ -207,6 +247,13 @@ class MapService:
                 "weather_error": weather_error,
                 "llm_error": advice.error,
                 "risk_source": risk.source,
+                "demo_override_applied": risk.source == "demo_override",
+                "demo_override_reason": (
+                    "MVP 시연을 위해 도봉구의 산사태·호우·연쇄재난 위험도를 "
+                    "각 70점으로 고정"
+                    if risk.source == "demo_override"
+                    else None
+                ),
                 "risk_formula": (
                     "overall = landslide_risk*0.5 + heavy_rain_risk*0.3 "
                     "+ cascade_risk*0.2"
@@ -255,9 +302,13 @@ class MapService:
                 "shelter_result_count": len(region.get("shelters", [])),
                 "mvp_scope": settings.mvp_region_prefix,
                 "notice": (
-                    "제공된 Random Forest Pipeline의 발생 클래스 확률을 사용했습니다."
-                    if risk.source == "random_forest"
-                    else "Random Forest를 사용할 수 없어 규칙 기반 결과를 사용했습니다."
+                    "MVP 시연용으로 도봉구 위험도를 고정한 결과입니다."
+                    if risk.source == "demo_override"
+                    else (
+                        "제공된 Random Forest Pipeline의 발생 클래스 확률을 사용했습니다."
+                        if risk.source == "random_forest"
+                        else "Random Forest를 사용할 수 없어 규칙 기반 결과를 사용했습니다."
+                    )
                 ),
                 **terrain_metadata,
             },
