@@ -21,23 +21,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(map_router)
 
-    @app.get("/", tags=["root"])
-    def root() -> dict[str, object]:
-        return {
-            "service": "SafeLink API",
-            "status": "running",
-            "docs": "/docs",
-            "endpoints": {
-                "map": "/map",
-                "region_example": "/map/관악구",
-                "health": "/health",
-            },
-        }
-
-    @app.get("/health", tags=["health"])
-    def health_check() -> dict[str, str]:
-        return {"status": "ok"}
-
     return app
 
 

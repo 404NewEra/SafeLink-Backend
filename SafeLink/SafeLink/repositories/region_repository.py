@@ -4,6 +4,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.config import settings
+
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "regions.json"
 
 
@@ -14,7 +16,12 @@ def _normalize(value: str) -> str:
 class RegionRepository:
     def __init__(self, data_path: Path = DATA_PATH) -> None:
         with data_path.open(encoding="utf-8") as file:
-            self._regions: list[dict[str, Any]] = json.load(file)
+            regions: list[dict[str, Any]] = json.load(file)
+        self._regions = [
+            region
+            for region in regions
+            if region["name"].startswith(settings.mvp_region_prefix)
+        ]
 
     def list_all(self) -> list[dict[str, Any]]:
         return self._regions.copy()
