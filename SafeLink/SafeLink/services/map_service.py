@@ -37,6 +37,8 @@ from services.weather_client import (
     WeatherClientError,
 )
 
+SHELTER_RAG_MIN_OVERALL_SCORE = 60.0
+
 
 class MapService:
     def __init__(
@@ -81,8 +83,6 @@ class MapService:
             region["disaster_history"] = self.history_repository.find_by_region(
                 region["name"]
             )
-        if self.shelter_repository is not None:
-            region["shelters"] = self.shelter_repository.retrieve(region["name"])
         return region, metadata
 
     def _analyze_region(
@@ -133,10 +133,11 @@ class MapService:
             )
 
         ranges = {
-            "low": (0, 24.99),
-            "moderate": (25, 49.99),
-            "high": (50, 74.99),
-            "critical": (75, 100),
+            "safe": (0, 19.99),
+            "interest": (20, 39.99),
+            "caution": (40, 59.99),
+            "danger": (60, 79.99),
+            "very_danger": (80, 100),
         }
         legend = [
             RiskLegendItem(
@@ -166,16 +167,24 @@ class MapService:
         region, terrain_metadata = self._enrich_region(source_region)
         observations, weather_source, weather_error = self._analyze_region(region)
         risk = max(observations, key=lambda item: item.risk.overall_score).risk
+        shelter_rag_eligible = risk.overall_score >= SHELTER_RAG_MIN_OVERALL_SCORE
+        region["shelters"] = (
+            self.shelter_repository.retrieve(region["name"])
+            if shelter_rag_eligible and self.shelter_repository is not None
+            else []
+        )
         latest = observations[-1].risk.model_input
         weather_summary = WeatherSummary(
             observed_from=observations[0].observed_at,
             observed_to=observations[-1].observed_at,
             observation_count=len(observations),
-            latest_rain_15m_mm=latest.rain_15m,
-            latest_rain_60m_mm=latest.rain_60m,
+            latest_rain_1h_mm=latest.rain_1h,
             latest_rain_3h_mm=latest.rain_3h,
             latest_rain_6h_mm=latest.rain_6h,
+            latest_rain_12h_mm=latest.rain_12h,
             latest_rain_24h_mm=latest.rain_24h,
+            latest_rain_48h_mm=latest.rain_48h,
+            latest_rain_72h_mm=latest.rain_72h,
             source=weather_source,
         )
         advice = self.advice_generator.generate(region, risk, observations)
@@ -205,13 +214,23 @@ class MapService:
                 "cascade_formula": "sqrt(landslide_risk * heavy_rain_risk)",
                 "landslide_classification_threshold": 0.5,
                 "heavy_rain_reference_mm": {
-                    "rain_15m": 20,
-                    "rain_60m": 50,
+                    "rain_1h": 50,
                     "rain_3h": 90,
                     "rain_6h": 150,
+                    "rain_12h": 200,
                     "rain_24h": 300,
+                    "rain_48h": 400,
+                    "rain_72h": 500,
                 },
-                "rain_24h_method": "기상청 rn_day(KST 자정 이후 누적)를 MVP의 rain_24h로 사용",
+                "rain_accumulation_fields": {
+                    "rain_1h": "rn_60m",
+                    "rain_3h": "rn_03h",
+                    "rain_6h": "rn_06h",
+                    "rain_12h": "rn_12h",
+                    "rain_24h": "rn_day (KST 자정 이후 누적)",
+                    "rain_48h": "rn_02D",
+                    "rain_72h": "rn_03D",
+                },
                 "terrain_source": region.get("terrain_source", "fallback"),
                 "history_source": (
                     str(self.history_repository.csv_path)
@@ -225,7 +244,14 @@ class MapService:
                     if self.shelter_repository and self.shelter_repository.csv_path
                     else "fallback"
                 ),
-                "shelter_rag_retrieval": "지역 구 이름이 대피소 주소에 일치하는 상위 CSV 행",
+                "shelter_rag_retrieval": (
+                    "종합 위험도 60점 이상(위험 단계)일 때 선택한 자치구와 "
+                    "주소가 일치하는 "
+                    "대피소를 검색하며, "
+                    "CSV에 좌표가 없어 거리순이라고 단정하지 않음"
+                ),
+                "shelter_rag_min_overall_score": SHELTER_RAG_MIN_OVERALL_SCORE,
+                "shelter_rag_eligible": shelter_rag_eligible,
                 "shelter_result_count": len(region.get("shelters", [])),
                 "mvp_scope": settings.mvp_region_prefix,
                 "notice": (

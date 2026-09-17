@@ -20,7 +20,7 @@ class Settings:
     random_forest_model_path: str = field(
         default_factory=lambda: os.getenv(
             "RANDOM_FOREST_MODEL_PATH",
-            str(DESKTOP_ROOT / "landslide_pipeline.joblib"),
+            str(PROJECT_ROOT / "models" / "landslide_pipeline.joblib"),
         )
     )
     kma_auth_key: str = field(

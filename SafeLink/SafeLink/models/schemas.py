@@ -4,14 +4,16 @@ from pydantic import BaseModel, Field
 
 
 class RandomForestInput(BaseModel):
-    landslide_map_value: int = Field(ge=1, le=5)
-    rain_15m: float = Field(ge=0)
-    rain_60m: float = Field(ge=0)
+    rain_1h: float = Field(ge=0)
     rain_3h: float = Field(ge=0)
     rain_6h: float = Field(ge=0)
+    rain_12h: float = Field(ge=0)
     rain_24h: float = Field(ge=0)
+    rain_48h: float = Field(ge=0)
+    rain_72h: float = Field(ge=0)
     slope: float = Field(ge=0, le=90)
     elevation: float
+    landslide_map_value: int = Field(ge=1, le=5)
 
 
 class RiskWeights(BaseModel):
@@ -30,7 +32,7 @@ class RiskAnalysis(BaseModel):
     heavy_rain_risk_score: float = Field(ge=0, le=100)
     cascade_risk_score: float = Field(ge=0, le=100)
     weights: RiskWeights
-    level: Literal["low", "moderate", "high", "critical"]
+    level: Literal["safe", "interest", "caution", "danger", "very_danger"]
     label: str
     color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
     model_input: RandomForestInput
@@ -120,11 +122,13 @@ class WeatherSummary(BaseModel):
     observed_from: str
     observed_to: str
     observation_count: int = Field(ge=1)
-    latest_rain_15m_mm: float = Field(ge=0)
-    latest_rain_60m_mm: float = Field(ge=0)
+    latest_rain_1h_mm: float = Field(ge=0)
     latest_rain_3h_mm: float = Field(ge=0)
     latest_rain_6h_mm: float = Field(ge=0)
+    latest_rain_12h_mm: float = Field(ge=0)
     latest_rain_24h_mm: float = Field(ge=0)
+    latest_rain_48h_mm: float = Field(ge=0)
+    latest_rain_72h_mm: float = Field(ge=0)
     source: str
 
 

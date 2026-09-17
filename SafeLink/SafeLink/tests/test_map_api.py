@@ -36,9 +36,18 @@ def test_map_returns_geojson_for_maplibre() -> None:
     assert body["geojson"]["type"] == "FeatureCollection"
     assert body["geojson"]["features"]
     assert body["geojson"]["features"][0]["properties"]["risk_color"].startswith("#")
-    assert body["geojson"]["features"][0]["id"] == "11620"
-    assert len(body["geojson"]["features"]) == 1
-    assert body["geojson"]["features"][0]["properties"]["name"].startswith("서울")
+    assert len(body["geojson"]["features"]) == 25
+    assert {feature["id"] for feature in body["geojson"]["features"]} == {
+        "11110", "11140", "11170", "11200", "11215", "11230", "11260",
+        "11290", "11305", "11320", "11350", "11380", "11410", "11440",
+        "11470", "11500", "11530", "11545", "11560", "11590", "11620",
+        "11650", "11680", "11710", "11740",
+    }
+    assert all(
+        feature["properties"]["name"].startswith("서울특별시 ")
+        and feature["properties"]["name"].endswith("구")
+        for feature in body["geojson"]["features"]
+    )
     assert len(body["geojson"]["features"][0]["properties"]["observations"]) == 7
     assert body["weather_source"] == "sample"
 
@@ -51,17 +60,19 @@ def test_region_can_be_selected_by_id() -> None:
     assert body["region"]["id"] == "11620"
     model_input = body["risk"]["model_input"]
     assert list(model_input) == [
-        "landslide_map_value",
-        "rain_15m",
-        "rain_60m",
+        "rain_1h",
         "rain_3h",
         "rain_6h",
+        "rain_12h",
         "rain_24h",
+        "rain_48h",
+        "rain_72h",
         "slope",
         "elevation",
+        "landslide_map_value",
     ]
     assert model_input["landslide_map_value"] in range(1, 6)
-    assert model_input["rain_60m"] >= 0
+    assert model_input["rain_1h"] >= 0
     assert model_input["slope"] >= 0
     assert body["weather_summary"]["observation_count"] == 7
     assert len(body["observations"]) == 7

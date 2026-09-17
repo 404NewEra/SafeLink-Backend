@@ -7,7 +7,16 @@ import httpx
 
 KST = timezone(timedelta(hours=9))
 OBSERVATION_CODES = (
-    "ta", "td", "hm", "rn_15m", "rn_60m", "rn_03h", "rn_06h", "rn_day"
+    "ta",
+    "td",
+    "hm",
+    "rn_60m",
+    "rn_03h",
+    "rn_06h",
+    "rn_12h",
+    "rn_day",
+    "rn_02D",
+    "rn_03D",
 )
 
 
@@ -21,11 +30,13 @@ class WeatherObservation:
     temperature_c: float | None
     dew_point_c: float | None
     humidity_percent: float | None
-    rain_15m: float
-    rain_60m: float
+    rain_1h: float
     rain_3h: float
     rain_6h: float
+    rain_12h: float
     rain_24h: float
+    rain_48h: float
+    rain_72h: float
     source: str
     rain_24h_method: str = "rn_day (KST 자정 이후 누적값)"
 
@@ -76,11 +87,13 @@ def parse_kma_observations(text: str) -> list[WeatherObservation]:
                 temperature_c=_optional_float(by_code["ta"]),
                 dew_point_c=_optional_float(by_code["td"]),
                 humidity_percent=_optional_float(by_code["hm"]),
-                rain_15m=_rainfall(by_code["rn_15m"]),
-                rain_60m=_rainfall(by_code["rn_60m"]),
+                rain_1h=_rainfall(by_code["rn_60m"]),
                 rain_3h=_rainfall(by_code["rn_03h"]),
                 rain_6h=_rainfall(by_code["rn_06h"]),
+                rain_12h=_rainfall(by_code["rn_12h"]),
                 rain_24h=_rainfall(by_code["rn_day"]),
+                rain_48h=_rainfall(by_code["rn_02D"]),
+                rain_72h=_rainfall(by_code["rn_03D"]),
                 source="kma_apihub",
             )
         )
@@ -145,11 +158,13 @@ class SampleWeatherClient:
                 temperature_c=22.0,
                 dew_point_c=18.0,
                 humidity_percent=78.0,
-                rain_15m=round(base_rain * 0.25, 3),
-                rain_60m=base_rain,
+                rain_1h=base_rain,
                 rain_3h=round(base_rain * 1.5, 3),
                 rain_6h=round(base_rain * 2.0, 3),
+                rain_12h=round(base_rain * 2.5, 3),
                 rain_24h=round(base_rain * 3.0, 3),
+                rain_48h=round(base_rain * 4.0, 3),
+                rain_72h=round(base_rain * 5.0, 3),
                 source="sample",
                 rain_24h_method="sample",
             )

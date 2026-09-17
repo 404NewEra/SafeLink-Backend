@@ -17,18 +17,20 @@ def _risk() -> RiskAnalysis:
         heavy_rain_risk_score=76,
         cascade_risk_score=78.94,
         weights=RiskWeights(landslide=0.5, heavy_rain=0.3, cascade=0.2),
-        level="critical",
-        label="매우 높음",
+        level="danger",
+        label="위험",
         color="#E74C3C",
         model_input=RandomForestInput(
-            landslide_map_value=1,
-            rain_15m=10.5,
-            rain_60m=42,
+            rain_1h=42,
             rain_3h=70,
             rain_6h=100,
+            rain_12h=125,
             rain_24h=150,
+            rain_48h=190,
+            rain_72h=220,
             slope=31.2,
             elevation=250,
+            landslide_map_value=1,
         ),
         source="fallback",
     )
@@ -113,7 +115,7 @@ def test_langchain_generator_receives_risk_history_and_verified_shelters() -> No
     assert result.generated_by == "llm"
     assert result.cascading_disasters[0]["type"] == "산사태 후 도로 통제"
     assert chain.context is not None
-    assert chain.context["risk"]["model_input"]["rain_60m"] == 42
+    assert chain.context["risk"]["model_input"]["rain_1h"] == 42
     assert chain.context["risk"]["model_input"]["slope"] == 31.2
     assert chain.context["past_disaster_history"][0]["type"] == "산사태"
     assert chain.context["retrieved_shelters_from_seoul_csv"][0]["name"] == "시민체육센터"

@@ -6,10 +6,11 @@ from models.schemas import RandomForestInput, RiskAnalysis, RiskWeights
 from services.weather_client import WeatherObservation
 
 RISK_STYLE = {
-    "low": ("낮음", "#2ECC71"),
-    "moderate": ("보통", "#F1C40F"),
-    "high": ("높음", "#E67E22"),
-    "critical": ("매우 높음", "#E74C3C"),
+    "safe": ("안전", "#2ECC71"),
+    "interest": ("관심", "#3498DB"),
+    "caution": ("주의", "#F1C40F"),
+    "danger": ("위험", "#E67E22"),
+    "very_danger": ("매우 위험", "#E74C3C"),
 }
 
 LANDSLIDE_WEIGHT = 0.5
@@ -17,14 +18,16 @@ HEAVY_RAIN_WEIGHT = 0.3
 CASCADE_WEIGHT = 0.2
 CLASSIFICATION_THRESHOLD = 0.5
 MODEL_FEATURE_NAMES = [
-    "landslide_map_value",
-    "rain_15m",
-    "rain_60m",
+    "rain_1h",
     "rain_3h",
     "rain_6h",
+    "rain_12h",
     "rain_24h",
+    "rain_48h",
+    "rain_72h",
     "slope",
     "elevation",
+    "landslide_map_value",
 ]
 
 
@@ -39,26 +42,30 @@ class RiskPredictor(Protocol):
 
 @dataclass(frozen=True)
 class ModelFeatures:
-    landslide_map_value: int
-    rain_15m: float
-    rain_60m: float
+    rain_1h: float
     rain_3h: float
     rain_6h: float
+    rain_12h: float
     rain_24h: float
+    rain_48h: float
+    rain_72h: float
     slope: float
     elevation: float
+    landslide_map_value: int
 
     def as_vector(self) -> list[float]:
         """Random Forest 학습 당시와 동일한 순서의 입력 벡터입니다."""
         return [
-            float(self.landslide_map_value),
-            self.rain_15m,
-            self.rain_60m,
+            self.rain_1h,
             self.rain_3h,
             self.rain_6h,
+            self.rain_12h,
             self.rain_24h,
+            self.rain_48h,
+            self.rain_72h,
             self.slope,
             self.elevation,
+            float(self.landslide_map_value),
         ]
 
     def as_record(self) -> dict[str, float]:
@@ -75,37 +82,43 @@ class WeatherPreprocessor:
         weather: WeatherObservation,
     ) -> ModelFeatures:
         return ModelFeatures(
+            rain_1h=round(max(0.0, weather.rain_1h), 3),
+            rain_3h=round(max(0.0, weather.rain_3h), 3),
+            rain_6h=round(max(0.0, weather.rain_6h), 3),
+            rain_12h=round(max(0.0, weather.rain_12h), 3),
+            rain_24h=round(max(0.0, weather.rain_24h), 3),
+            rain_48h=round(max(0.0, weather.rain_48h), 3),
+            rain_72h=round(max(0.0, weather.rain_72h), 3),
+            slope=max(0.0, min(90.0, float(region["slope"]))),
+            elevation=float(region["elevation"]),
             landslide_map_value=max(
                 1, min(5, int(region["landslide_map_value"]))
             ),
-            rain_15m=round(max(0.0, weather.rain_15m), 3),
-            rain_60m=round(max(0.0, weather.rain_60m), 3),
-            rain_3h=round(max(0.0, weather.rain_3h), 3),
-            rain_6h=round(max(0.0, weather.rain_6h), 3),
-            rain_24h=round(max(0.0, weather.rain_24h), 3),
-            slope=max(0.0, min(90.0, float(region["slope"]))),
-            elevation=float(region["elevation"]),
         )
 
 
 def _level_for_score(score: float) -> str:
-    if score < 25:
-        return "low"
-    if score < 50:
-        return "moderate"
-    if score < 75:
-        return "high"
-    return "critical"
+    if score < 20:
+        return "safe"
+    if score < 40:
+        return "interest"
+    if score < 60:
+        return "caution"
+    if score < 80:
+        return "danger"
+    return "very_danger"
 
 
 def _heavy_rain_score(features: ModelFeatures) -> float:
     """각 누적 시간대의 기준량 도달 비율로 호우 위험도를 0~100으로 환산합니다."""
     normalized = (
-        min(features.rain_15m / 20.0, 1.0) * 0.15
-        + min(features.rain_60m / 50.0, 1.0) * 0.25
-        + min(features.rain_3h / 90.0, 1.0) * 0.20
+        min(features.rain_1h / 50.0, 1.0) * 0.20
+        + min(features.rain_3h / 90.0, 1.0) * 0.15
         + min(features.rain_6h / 150.0, 1.0) * 0.15
-        + min(features.rain_24h / 300.0, 1.0) * 0.25
+        + min(features.rain_12h / 200.0, 1.0) * 0.15
+        + min(features.rain_24h / 300.0, 1.0) * 0.15
+        + min(features.rain_48h / 400.0, 1.0) * 0.10
+        + min(features.rain_72h / 500.0, 1.0) * 0.10
     )
     return round(normalized * 100.0, 2)
 
@@ -211,9 +224,7 @@ class RandomForestRiskPredictor:
         weather: WeatherObservation,
     ) -> RiskAnalysis:
         features = self.preprocessor.transform(region, weather)
-        # 입력 순서:
-        # landslide_map_value, rain_15m, rain_60m, rain_3h,
-        # rain_6h, rain_24h, slope, elevation
+        # 학습 Pipeline의 feature_names_in_과 동일한 10개 피처 순서를 사용합니다.
         import pandas as pd
 
         model_input = pd.DataFrame([features.as_record()], columns=MODEL_FEATURE_NAMES)

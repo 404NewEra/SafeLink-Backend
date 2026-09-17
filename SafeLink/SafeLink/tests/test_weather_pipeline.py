@@ -2,7 +2,12 @@ from datetime import datetime
 
 import httpx
 
-from services.risk_model import FallbackRiskPredictor, RandomForestRiskPredictor
+from services.risk_model import (
+    FallbackRiskPredictor,
+    RISK_STYLE,
+    RandomForestRiskPredictor,
+    _level_for_score,
+)
 from services.weather_client import KST, KmaWeatherClient, WeatherObservation
 
 
@@ -14,14 +19,34 @@ class FakeResponse:
         return None
 
 
+def test_overall_risk_uses_five_requested_levels() -> None:
+    assert RISK_STYLE == {
+        "safe": ("안전", "#2ECC71"),
+        "interest": ("관심", "#3498DB"),
+        "caution": ("주의", "#F1C40F"),
+        "danger": ("위험", "#E67E22"),
+        "very_danger": ("매우 위험", "#E74C3C"),
+    }
+    assert _level_for_score(0) == "safe"
+    assert _level_for_score(19.99) == "safe"
+    assert _level_for_score(20) == "interest"
+    assert _level_for_score(39.99) == "interest"
+    assert _level_for_score(40) == "caution"
+    assert _level_for_score(59.99) == "caution"
+    assert _level_for_score(60) == "danger"
+    assert _level_for_score(79.99) == "danger"
+    assert _level_for_score(80) == "very_danger"
+    assert _level_for_score(100) == "very_danger"
+
+
 def test_kma_apihub_response_is_parsed_and_request_is_bounded_to_60_minutes(
     monkeypatch,
 ) -> None:
     captured_params: dict = {}
     response_text = """
-# TM TA TD HM RN15 RN60 RN03 RN06 RNDAY
-202609171130 21.0 18.0 82 1.5 4.0 8.0 12.0 20.0
-202609171140 21.2 18.1 81 2.0 5.0 9.0 13.0 22.0
+# TM TA TD HM RN60 RN03 RN06 RN12 RNDAY RN02D RN03D
+202609171130 21.0 18.0 82 4.0 8.0 12.0 16.0 20.0 28.0 35.0
+202609171140 21.2 18.1 81 5.0 9.0 13.0 18.0 22.0 30.0 38.0
 """
 
     def fake_get(url: str, *, params: dict, timeout: float) -> FakeResponse:
@@ -43,11 +68,12 @@ def test_kma_apihub_response_is_parsed_and_request_is_bounded_to_60_minutes(
     assert captured_params["itv"] == 10
     assert captured_params["authKey"] == "test-key"
     assert captured_params["obs"] == (
-        "ta,td,hm,rn_15m,rn_60m,rn_03h,rn_06h,rn_day"
+        "ta,td,hm,rn_60m,rn_03h,rn_06h,rn_12h,rn_day,rn_02D,rn_03D"
     )
     assert len(observations) == 2
-    assert observations[1].rain_15m == 2
+    assert observations[1].rain_1h == 5
     assert observations[1].rain_24h == 22
+    assert observations[1].rain_72h == 38
 
 
 def test_exact_kma_rainfall_fields_are_used_as_random_forest_input(monkeypatch) -> None:
@@ -55,7 +81,7 @@ def test_exact_kma_rainfall_fields_are_used_as_random_forest_input(monkeypatch) 
         httpx,
         "get",
         lambda *args, **kwargs: FakeResponse(
-            "202609171400 23 20 90 10 40 70 100 150\n"
+            "202609171400 23 20 90 40 70 100 125 150 190 220\n"
         ),
     )
     weather = KmaWeatherClient(
@@ -68,23 +94,25 @@ def test_exact_kma_rainfall_fields_are_used_as_random_forest_input(monkeypatch) 
         {"slope": 30, "elevation": 250, "landslide_map_value": 1}, weather
     )
 
-    assert risk.model_input.rain_15m == 10
-    assert risk.model_input.rain_60m == 40
+    assert risk.model_input.rain_1h == 40
     assert risk.model_input.rain_3h == 70
     assert risk.model_input.rain_6h == 100
+    assert risk.model_input.rain_12h == 125
     assert risk.model_input.rain_24h == 150
+    assert risk.model_input.rain_48h == 190
+    assert risk.model_input.rain_72h == 220
     assert risk.overall_score > 50
 
 
 class FakeRandomForest:
     classes_ = [0, 1]
     feature_names_in_ = [
-        "landslide_map_value", "rain_15m", "rain_60m", "rain_3h",
-        "rain_6h", "rain_24h", "slope", "elevation",
+        "rain_1h", "rain_3h", "rain_6h", "rain_12h", "rain_24h",
+        "rain_48h", "rain_72h", "slope", "elevation", "landslide_map_value",
     ]
 
     def predict_proba(self, vector):
-        assert vector.shape == (1, 8)
+        assert vector.shape == (1, 10)
         assert list(vector.columns) == self.feature_names_in_
         return [[0.27, 0.73]]
 
@@ -96,11 +124,13 @@ def test_random_forest_positive_probability_becomes_landslide_risk() -> None:
         temperature_c=23,
         dew_point_c=20,
         humidity_percent=90,
-        rain_15m=20,
-        rain_60m=50,
+        rain_1h=50,
         rain_3h=90,
         rain_6h=150,
+        rain_12h=200,
         rain_24h=300,
+        rain_48h=400,
+        rain_72h=500,
         source="test",
     )
     risk = predictor.predict(
