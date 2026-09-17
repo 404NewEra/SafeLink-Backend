@@ -1,0 +1,21 @@
+[
+  {
+    "id": "11620",
+    "name": "서울특별시 관악구",
+    "aliases": ["서울 관악구", "관악구", "관악", "seoul-gwanak"],
+    "center": [126.9516, 37.4784],
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[126.900, 37.495], [126.985, 37.495], [126.985, 37.445], [126.900, 37.445], [126.900, 37.495]]]
+    },
+    "sample_risk_score": 67.0,
+    "sample_rain_60m": 8.0,
+    "slope": 24.7,
+    "elevation": 150.0,
+    "landslide_map_value": 2,
+    "terrain_source": "sample",
+    "disaster_history": [],
+    "cascading_disasters": [],
+    "shelters": []
+  }
+]
